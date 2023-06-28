@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+    aws-sam-template-python
+
+    Powertools example
+
+Globals: # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-specification-template-anatomy-globals.html
+    Function:
+        Timeout: 7
+        MemorySize: 128
+        Runtime: python3.9
+
+Resources:
+
+    HelloWorldFunction:
+        Type: AWS::Serverless::Function # More info about Function Resource: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-function.html
+        Properties:
+            Handler: app.lambda_handler
+            CodeUri: services/hello_world
+            Description: Hello World function
+            Architectures:
+                - x86_64
+            Tracing: Active
+            Events:
+                HelloPath:
+                    Type: Api # More info about API Event Source: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-property-function-api.html
+                    Properties:
+                        Path: /hello
+                        Method: GET
+             # Powertools env vars: https://awslabs.github.io/aws-lambda-powertools-python/#environment-variables
+            Environment:
+                Variables:
+                    POWERTOOLS_SERVICE_NAME: PowertoolsHelloWorld
+                    POWERTOOLS_METRICS_NAMESPACE: Powertools
+                    LOG_LEVEL: INFO
+            Tags:
+                LambdaPowertools: python
+
+    UserFunction:
+        Type: AWS::Serverless::Function # More info about Function Resource: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-function.html
+        Properties:
+            Handler: app.lambda_handler
+            CodeUri: services/users
+            Description: User Model CRUD
+            Architectures:
+                - x86_64
+            Tracing: Active
+            Events:
+                GetUsers:
+                    Type: Api # More info about API Event Source: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-property-function-api.html
+                    Properties:
+                        Path: /users/{id}
+                        Method: GET
+                PostUsers:
+                    Type: Api # More info about API Event Source: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-property-function-api.html
+                    Properties:
+                        Path: /users
+                        Method: POST
+
+             # Powertools env vars: https://awslabs.github.io/aws-lambda-powertools-python/#environment-variables
+            Environment:
+                Variables:
+                    POWERTOOLS_SERVICE_NAME: UserModelData
+                    POWERTOOLS_METRICS_NAMESPACE: UserModelData
+                    LOG_LEVEL: INFO
+            Tags:
+                LambdaPowertools: python
+            Policies:
+                - DynamoDBCrudPolicy:
+                    TableName: !Ref MyDynamoDBTable
+
+    MyDynamoDBTable:
+        Type: AWS::DynamoDB::Table
+        Properties:
+            TableName: bc-api-demo-user
+            AttributeDefinitions:
+                -   AttributeName: id
+                    AttributeType: S
+            KeySchema:
+                -   AttributeName: id
+                    KeyType: HASH
+            ProvisionedThroughput:
+                ReadCapacityUnits: 2
+                WriteCapacityUnits: 2
+Outputs:
+    HelloWorldApi:
+      Description: "API Gateway endpoint URL for Prod environment for Hello World Function"
+      Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello"
+
+    HelloWorldFunction:
+      Description: "Hello World Lambda Function ARN"
+      Value: !GetAtt HelloWorldFunction.Arn
